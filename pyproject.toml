@@ -1,0 +1,19 @@
+[project]
+name = "lts-timetrack"
+version = "0.1.0"
+description = "LTS TimeTrack: QR-scan attendance backend (FastAPI + PostgreSQL)"
+requires-python = ">=3.12"
+dynamic = ["dependencies"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 120
