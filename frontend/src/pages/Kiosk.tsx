@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiError, isDeviceKeyError, onSite } from '../api/client'
 import type { OnSiteEntry } from '../api/types'
 import { useSession } from '../auth/context'
@@ -11,7 +12,7 @@ import { useScanFlow } from '../kiosk/useScanFlow'
 const REFRESH_MS = 20_000
 
 export default function Kiosk({ deviceKey }: { deviceKey: string }) {
-  const { email, signOut, forgetDeviceKey } = useSession()
+  const { email, role, signOut, forgetDeviceKey } = useSession()
   const [entries, setEntries] = useState<OnSiteEntry[]>([])
   const [loaded, setLoaded] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
@@ -55,6 +56,7 @@ export default function Kiosk({ deviceKey }: { deviceKey: string }) {
         <details className="menu">
           <summary>{email ?? 'Menu'}</summary>
           <div className="menu-items">
+            {role === 'ADMIN' && <Link to="/admin" className="btn">Admin dashboard</Link>}
             <button type="button" className="btn" onClick={forgetDeviceKey}>Change device key</button>
             <button type="button" className="btn" onClick={signOut}>Sign out</button>
           </div>

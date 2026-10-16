@@ -38,7 +38,8 @@ npm install
 npm run dev                          # http://localhost:3000, proxies /api to the backend on :8000
 ```
 
-See [frontend/README.md](frontend/README.md): sign in as a volunteer, enter the kiosk's device key once, then scan.
+See [frontend/README.md](frontend/README.md). Sign in as the admin (`admin@example.com`) for the admin screens: add a
+person and print their badge. Sign in as a volunteer for the kiosk: enter the kiosk's device key once, then scan.
 
 ## Checks
 
@@ -98,4 +99,5 @@ Schema changes: add a new Alembic revision (`alembic revision -m "..."`) instead
 - Nginx / TLS config is not included (deployment step).
 - Redis support is tested with an in-memory fake only; run it against a real Redis before relying on it.
 - The API Dockerfile is untested, and there is no load test against the p95 < 300 ms target yet.
-- The admin dashboard is not built yet (the kiosk screen is, in `frontend/`).
+- The admin front end is partly built (sign-in routing, dashboard, people and badges). Sessions and corrections, rules,
+  devices, users, the audit log and reports still need screens; the backend endpoints for them already exist.

@@ -1,3 +1,4 @@
+import { roleFromToken, type Role } from '../auth/jwt'
 import * as store from '../auth/storage'
 import type { OnSiteEntry, ScanResponse, TokenResponse } from './types'
 
@@ -44,13 +45,14 @@ function detailOf(body: unknown, fallback: string): string {
   return fallback
 }
 
-async function send(path: string, init: RequestInit): Promise<{ res: Response; body: unknown }> {
+async function send(path: string, init: RequestInit, asBlob = false): Promise<{ res: Response; body: unknown }> {
   let res: Response
   try {
     res = await fetch(`${BASE}${path}`, init)
   } catch {
     throw new ApiError(0, 'Cannot reach the server')
   }
+  if (asBlob && res.ok) return { res, body: await res.blob() }
   const text = await res.text()
   let body: unknown = null
   try {
@@ -85,10 +87,11 @@ function refreshAccessToken(): Promise<RefreshOutcome> {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT'
   body?: unknown
   deviceKey?: string
   anonymous?: boolean // do not send the access token (login)
+  asBlob?: boolean // the response is a file (for example a PNG)
   retried?: boolean
 }
 
@@ -98,11 +101,15 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   if (accessToken && !opts.anonymous) headers.Authorization = `Bearer ${accessToken}`
   if (opts.deviceKey) headers['X-Device-Key'] = opts.deviceKey
 
-  const { res, body } = await send(path, {
-    method: opts.method ?? 'GET',
-    headers,
-    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
-  })
+  const { res, body } = await send(
+    path,
+    {
+      method: opts.method ?? 'GET',
+      headers,
+      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+    },
+    opts.asBlob,
+  )
   if (res.ok) return body as T
 
   const detail = detailOf(body, `Request failed (${res.status})`)
@@ -121,14 +128,26 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   throw new ApiError(res.status, detail, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null)
 }
 
-export async function login(email: string, password: string): Promise<void> {
+/** Signs in and returns the account's role (read from the token; the server enforces it on every call). */
+export async function login(email: string, password: string): Promise<Role | null> {
   const tokens = await request<TokenResponse>('/auth/login', {
     method: 'POST',
     body: { email, password },
     anonymous: true,
   })
   accessToken = tokens.access_token
-  store.saveSession(tokens.refresh_token, email)
+  const role = roleFromToken(tokens.access_token)
+  store.saveSession(tokens.refresh_token, email, role)
+  return role
+}
+
+/** Authenticated calls for the admin screens: the same token refresh and error mapping as the kiosk. */
+export const http = {
+  get: <T>(path: string) => request<T>(path),
+  post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
+  patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body }),
+  put: <T>(path: string, body: unknown) => request<T>(path, { method: 'PUT', body }),
+  blob: (path: string) => request<Blob>(path, { asBlob: true }),
 }
 
 export function logout(): void {

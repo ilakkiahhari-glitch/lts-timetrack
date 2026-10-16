@@ -1,7 +1,8 @@
 # LTS TimeTrack front end
 
-React 19 + Vite + TypeScript. Today it contains the **kiosk scan screen** for volunteer scanner operators; the admin
-screens come next. It talks to the FastAPI backend under `/api/v1` and nothing else.
+React 19 + Vite + TypeScript. It contains the **kiosk scan screen** for volunteer scanner operators and the first
+**admin screens** (sign-in routing, dashboard, people and printable badges). Sessions and corrections, devices, users,
+rules, the audit log and reports are still to come. It talks to the FastAPI backend under `/api/v1` and nothing else.
 
 ## Run it
 
@@ -14,6 +15,28 @@ npm run dev        # http://localhost:3000  (proxies /api to http://localhost:80
 ```
 
 Other scripts: `npm test` (Vitest), `npm run lint`, `npm run build` (type-check + production build into `dist/`).
+
+## Who sees what
+
+Signing in sends an **admin** to `/admin` and a **volunteer** to `/kiosk`. Admins can open the kiosk from the admin
+header and come back from the kiosk menu. Volunteers who type an admin address are sent back to the kiosk, and the
+server refuses them anyway (403). The role is read from the access token only to choose screens; it is never trusted
+for access.
+
+| Address | Screen |
+|---|---|
+| `/login` | Sign in |
+| `/kiosk` | Kiosk (device setup the first time) |
+| `/admin` | Dashboard: who is on site now, sessions flagged for review, quick actions |
+| `/admin/people` | Search and filter people (type, group, active), 25 per page |
+| `/admin/people/new` | Add a person, then print or download their one-time QR badge |
+| `/admin/people/:id` | Edit details, deactivate or reactivate, issue a new QR code, reprint a badge issued moments ago |
+| `/admin/people/types` | List and add person types |
+
+**Badges.** The badge card (name, type, ID number and QR, 86 x 54 mm) is what prints; the rest of the page is hidden in
+print. The QR holds only a random token, so the printed text is what makes a badge recognisable. The code is shown once
+(the backend never stores it), so print or save the badge when it appears; the detail page can reprint it for a short
+time afterwards, and "Issue a new QR code" replaces a lost one (the old badge stops working at once).
 
 ## How the kiosk works
 
@@ -36,11 +59,15 @@ Behaviour worth knowing:
 
 ## Layout
 
-- `src/api/`: typed API client (`client.ts`) with token refresh, error mapping and the `X-Device-Key` header.
-- `src/auth/`: session state (`session.tsx`, `context.ts`) and what is kept in `localStorage` (`storage.ts`): the
-  refresh token and the device key. The access token lives in memory only.
+- `src/api/`: typed API client (`client.ts`) with token refresh, error mapping and the `X-Device-Key` header;
+  `admin.ts` has the admin calls (people, person types, open sessions).
+- `src/auth/`: session state (`session.tsx`, `context.ts`), the role hint (`jwt.ts`) and what is kept in
+  `localStorage` (`storage.ts`): the refresh token, role and device key. The access token lives in memory only.
+- `src/routes.tsx`: route guards (`RequireAuth`, `RequireAdmin`) and the role-based home redirect.
 - `src/kiosk/useScanFlow.ts`: submits codes, ignores repeats, decides what the banner shows.
-- `src/pages/`: `Login`, `DeviceSetup`, `Kiosk`. `src/components/`: camera scanner, result banner, on-site list, clock.
+- `src/pages/`: `Login`, `DeviceSetup`, `Kiosk`. `src/admin/`: layout, dashboard and the people screens.
+- `src/components/`: camera scanner, result banner, on-site list, clock, badge (`Badge.tsx`), key/value editor.
+- `src/test/fakeApi.tsx`: test helper that stubs `fetch` by method and path and renders the app signed in.
 
 ## Production
 

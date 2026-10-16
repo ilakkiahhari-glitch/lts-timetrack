@@ -22,3 +22,58 @@ export interface OnSiteEntry {
   person_type: string
   entry_time: string
 }
+
+// ---- admin (app/schemas/people.py, attendance.py) ----
+
+export interface Person {
+  id: string
+  person_type: string
+  external_code: string
+  first_name: string
+  last_name: string
+  email: string | null
+  group_name: string | null
+  attributes: Record<string, unknown>
+  qr_version: number
+  qr_issued_at: string
+  is_active: boolean
+  created_at: string
+}
+
+/** Returned only when a QR is issued (create or rotate). The raw token cannot be fetched again. */
+export interface PersonWithQr extends Person {
+  qr_token: string
+  qr_image: string // PNG data: URI
+}
+
+export interface PersonCreate {
+  person_type: string
+  external_code: string
+  first_name: string
+  last_name: string
+  email: string | null
+  group_name: string | null
+  attributes: Record<string, unknown>
+}
+
+export type PersonUpdate = Partial<Pick<Person, 'first_name' | 'last_name' | 'email' | 'group_name' | 'attributes' | 'is_active'>>
+
+export interface PersonType {
+  code: string
+  display_name: string
+  is_active: boolean
+}
+
+export interface SessionSummary {
+  id: string
+  person_id: string
+  external_code: string
+  person_name: string
+  person_type: string
+  entry_time: string
+  exit_time: string | null
+  status: 'OPEN' | 'CLOSED' | 'VOIDED'
+  duration_seconds: number | null
+  work_date: string
+  notes: string | null
+}

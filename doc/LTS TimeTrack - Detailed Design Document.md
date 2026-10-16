@@ -563,7 +563,7 @@ Reports aggregate attendance_sessions by person (filterable by type) and work_da
 
 | ID | Gap | Status |
 | --- | --- | --- |
-| G-1 | Web app (kiosk screen, admin dashboard) | **Kiosk screen built** (2026-10-16: React + Vite + TypeScript in `frontend/`, camera and USB/manual scanning, on-site list). **Admin dashboard not started** |
+| G-1 | Web app (kiosk screen, admin dashboard) | **Kiosk screen built** (2026-10-16: React + Vite + TypeScript in `frontend/`, camera and USB/manual scanning, on-site list). **Admin screens in progress** (2026-10-16): role-based sign-in, dashboard, people management with printable QR badges and person types are built. Still to build: sessions and corrections, attendance rules, devices, users, audit log viewer, reports and export |
 | G-2 | Nginx with TLS config | Not included |
 | G-3 | `GET /people/{id}/qr` works only for a short time after a QR is issued (raw tokens are never stored in the database) | **Done** (2026-10-16): the token is cached in Redis with an expiry, so any worker can serve it; falls back to per-process memory without Redis |
 | G-4 | Rate limits (30 req/min) must be shared across the 2-4 uvicorn workers | **Done** (2026-10-16): Redis counters, one fixed one-minute window per device or IP; falls back to per-process counting without Redis or if Redis is down |

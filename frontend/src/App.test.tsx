@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { resetClientForTests } from './api/client'
@@ -37,7 +38,7 @@ function stubServer(server: Server) {
 const loginOk: Server['x'] = () => ({ body: { access_token: 'A1', refresh_token: 'R1', token_type: 'bearer' } })
 
 function renderApp() {
-  return render(<SessionProvider><App /></SessionProvider>)
+  return render(<MemoryRouter initialEntries={['/']}><SessionProvider><App /></SessionProvider></MemoryRouter>)
 }
 
 beforeEach(() => resetClientForTests())
