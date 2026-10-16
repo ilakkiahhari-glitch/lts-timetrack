@@ -64,6 +64,51 @@ export interface PersonType {
   is_active: boolean
 }
 
+export interface Device {
+  id: string
+  name: string
+  location: string | null
+  is_active: boolean
+  last_seen_at: string | null
+  created_at: string
+}
+
+/** Returned only when a key is issued (register or rotate). The raw key cannot be fetched again. */
+export interface DeviceWithKey extends Device {
+  api_key: string
+}
+
+export type UserRole = 'ADMIN' | 'VOLUNTEER'
+
+export interface User {
+  id: string
+  email: string
+  full_name: string
+  role: UserRole
+  is_active: boolean
+  last_login_at: string | null
+  created_at: string
+}
+
+export interface UserCreate {
+  email: string
+  full_name: string
+  role: UserRole
+  password: string
+}
+
+export type UserUpdate = Partial<{ full_name: string; role: UserRole; is_active: boolean; password: string }>
+
+export interface Rule {
+  person_type: string
+  duplicate_window_seconds: number
+  auto_close_time: string | null // "HH:MM:SS", school-local
+  late_after_time: string | null
+  updated_at: string
+}
+
+export type RuleUpdate = Pick<Rule, 'duplicate_window_seconds' | 'auto_close_time' | 'late_after_time'>
+
 /** Why an admin must look at a session: still open past its cutoff, or voided because of a missed exit. */
 export type ReviewReason = 'LEFT_OPEN' | 'MISSED_EXIT'
 

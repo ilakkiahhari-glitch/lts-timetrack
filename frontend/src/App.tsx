@@ -1,12 +1,15 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminLayout from './admin/AdminLayout'
 import Dashboard from './admin/Dashboard'
+import Devices from './admin/Devices'
 import PeopleList from './admin/PeopleList'
 import PersonDetail from './admin/PersonDetail'
 import PersonNew from './admin/PersonNew'
 import PersonTypes from './admin/PersonTypes'
+import Rules from './admin/Rules'
 import SessionDetail from './admin/SessionDetail'
 import Sessions from './admin/Sessions'
+import Users from './admin/Users'
 import { HomeRedirect, KioskRoute, LoginRoute, RequireAdmin, RequireAuth } from './routes'
 
 export default function App() {
@@ -25,6 +28,9 @@ export default function App() {
             <Route path="people/:id" element={<PersonDetail />} />
             <Route path="sessions" element={<Sessions />} />
             <Route path="sessions/:id" element={<SessionDetail />} />
+            <Route path="rules" element={<Rules />} />
+            <Route path="devices" element={<Devices />} />
+            <Route path="users" element={<Users />} />
           </Route>
         </Route>
       </Route>

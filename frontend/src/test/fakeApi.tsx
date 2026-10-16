@@ -87,7 +87,22 @@ export const sessionDetail = (over: Record<string, unknown> = {}) => ({
   ],
 })
 
-export const PNG ='data:image/png;base64,iVBORw0KGgo='
+export const device = (over: Record<string, unknown> = {}) => ({
+  id: 'd1', name: 'Front Door', location: 'Main entrance', is_active: true,
+  last_seen_at: null, created_at: '2026-10-01T12:00:00Z', ...over,
+})
+
+export const user = (over: Record<string, unknown> = {}) => ({
+  id: 'u1', email: 'vol@example.com', full_name: 'Vera Volunteer', role: 'VOLUNTEER', is_active: true,
+  last_login_at: null, created_at: '2026-10-01T12:00:00Z', ...over,
+})
+
+export const rule = (over: Record<string, unknown> = {}) => ({
+  person_type: 'TEACHER', duplicate_window_seconds: 30, auto_close_time: null, late_after_time: null,
+  updated_at: '2026-10-01T12:00:00Z', ...over,
+})
+
+export const PNG = 'data:image/png;base64,iVBORw0KGgo='
 
 export const types = [
   { code: 'STAFF', display_name: 'Staff', is_active: true },

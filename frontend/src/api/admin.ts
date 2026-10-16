@@ -2,13 +2,20 @@ import { http } from './client'
 import type {
   AuditEntry,
   CorrectionRequest,
+  Device,
+  DeviceWithKey,
   Person,
   PersonCreate,
   PersonType,
   PersonUpdate,
   PersonWithQr,
+  Rule,
+  RuleUpdate,
   SessionDetail,
   SessionSummary,
+  User,
+  UserCreate,
+  UserUpdate,
 } from './types'
 
 /** "?a=1&b=2", skipping empty values. */
@@ -63,5 +70,22 @@ export const getSession = (id: string) => http.get<SessionDetail>(`/attendance/s
 export const correctSession = (id: string, body: CorrectionRequest) =>
   http.post<SessionDetail>(`/attendance/sessions/${id}/correct`, body)
 
-export const listAuditLogs = (q: { entityType: string; entityId: string }) =>
+export const listDevices = () => http.get<Device[]>('/devices')
+export const createDevice = (name: string, location: string | null) =>
+  http.post<DeviceWithKey>('/devices', { name, location })
+/** Returns the device, plus `api_key` when `rotate_key` was requested. */
+export const updateDevice = (
+  id: string,
+  change: Partial<{ name: string; location: string | null; is_active: boolean; rotate_key: boolean }>,
+) => http.patch<Device | DeviceWithKey>(`/devices/${id}`, change)
+
+export const listUsers = () => http.get<User[]>('/users')
+export const createUser = (body: UserCreate) => http.post<User>('/users', body)
+export const updateUser = (id: string, change: UserUpdate) => http.patch<User>(`/users/${id}`, change)
+
+export const getRule = (personType: string) => http.get<Rule>(`/attendance-rules/${personType}`)
+export const saveRule = (personType: string, rule: RuleUpdate) =>
+  http.put<Rule>(`/attendance-rules/${personType}`, rule)
+
+export const listAuditLogs =(q: { entityType: string; entityId: string }) =>
   http.get<AuditEntry[]>(`/audit-logs${qs({ entity_type: q.entityType, entity_id: q.entityId, limit: 100 })}`)

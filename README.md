@@ -99,5 +99,6 @@ Schema changes: add a new Alembic revision (`alembic revision -m "..."`) instead
 - Nginx / TLS config is not included (deployment step).
 - Redis support is tested with an in-memory fake only; run it against a real Redis before relying on it.
 - The API Dockerfile is untested, and there is no load test against the p95 < 300 ms target yet.
-- The admin front end is partly built (sign-in routing, dashboard, people and badges). Sessions and corrections, rules,
-  devices, users, the audit log and reports still need screens; the backend endpoints for them already exist.
+- The admin front end is mostly built (sign-in routing, dashboard, people and badges, sessions and corrections, rules,
+  kiosks, users). The audit log viewer and reports with export still need screens; their backend endpoints already exist.
+- There is no self-service password change: an admin sets and resets passwords (the design has no such endpoint).

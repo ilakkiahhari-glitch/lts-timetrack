@@ -2,7 +2,7 @@
 
 React 19 + Vite + TypeScript. It contains the **kiosk scan screen** for volunteer scanner operators and the first
 **admin screens** (sign-in routing, dashboard with a review queue, people and printable badges, sessions and
-corrections). Devices, users, attendance rules, the audit log viewer and reports are still to come. It talks to the FastAPI backend under `/api/v1` and nothing else.
+corrections, attendance rules, kiosks, users). The audit log viewer and reports with export are still to come. It talks to the FastAPI backend under `/api/v1` and nothing else.
 
 ## Run it
 
@@ -34,12 +34,21 @@ for access.
 | `/admin/people/new` | Add a person, then print or download their one-time QR badge |
 | `/admin/people/:id` | Edit details, deactivate or reactivate, issue a new QR code, reprint a badge issued moments ago |
 | `/admin/people/types` | List and add person types |
+| `/admin/rules` | Attendance rules per person type: duplicate scan window, auto-close time ("left open" cutoff), late-after time |
+| `/admin/devices` | Kiosks: register (the device key is shown once), rename, new key, deactivate or reactivate, last seen |
+| `/admin/users` | Admins and volunteers: add (with a generated password), change role, reset password (also unlocks), deactivate |
 
 **Fixing a forgotten scan-out.** A session that was never closed ("Left open") or was voided because the person scanned in
 again the next day ("Missed exit") appears in the review queue and is not counted as on site. Open it and enter the real
 entry and exit times plus a reason. The correction voids the old session and creates a corrected one; the original scans,
 the reason and who did it stay in the history. A missed-exit session can be rebuilt once. Times in the form use the
 browser's time zone, which is shown above the form.
+
+**Secrets are shown once.** A kiosk's device key (on registering or "New key") and a QR badge are displayed a single time,
+because the server keeps only a hash. A new device key stops the old one at once; a deactivated kiosk is refused.
+Passwords are set by an admin (there is no self-service password change yet): use "Generate" and pass the password on
+securely. Resetting a password also unlocks an account that was locked after failed sign-ins. You cannot deactivate or
+demote your own account.
 
 **Badges.** The badge card (name, type, ID number and QR, 86 x 54 mm) is what prints; the rest of the page is hidden in
 print. The QR holds only a random token, so the printed text is what makes a badge recognisable. The code is shown once
@@ -73,7 +82,7 @@ Behaviour worth knowing:
   `localStorage` (`storage.ts`): the refresh token, role and device key. The access token lives in memory only.
 - `src/routes.tsx`: route guards (`RequireAuth`, `RequireAdmin`) and the role-based home redirect.
 - `src/kiosk/useScanFlow.ts`: submits codes, ignores repeats, decides what the banner shows.
-- `src/pages/`: `Login`, `DeviceSetup`, `Kiosk`. `src/admin/`: layout, dashboard, the people screens and the sessions screens. `src/dates.ts`: date helpers.
+- `src/pages/`: `Login`, `DeviceSetup`, `Kiosk`. `src/admin/`: layout, dashboard, and the people, sessions, rules, kiosks and users screens. `src/dates.ts`, `src/password.ts`: helpers.
 - `src/components/`: camera scanner, result banner, on-site list, clock, badge (`Badge.tsx`), key/value editor.
 - `src/test/fakeApi.tsx`: test helper that stubs `fetch` by method and path and renders the app signed in.
 

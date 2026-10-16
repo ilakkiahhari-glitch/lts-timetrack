@@ -12,6 +12,9 @@ export default function AdminLayout() {
           <NavLink to="/admin" end>Dashboard</NavLink>
           <NavLink to="/admin/people">People</NavLink>
           <NavLink to="/admin/sessions">Sessions</NavLink>
+          <NavLink to="/admin/rules">Rules</NavLink>
+          <NavLink to="/admin/devices">Kiosks</NavLink>
+          <NavLink to="/admin/users">Users</NavLink>
         </nav>
         <div className="admin-user">
           <span className="admin-email" title={email ?? ''}>{email}</span>
