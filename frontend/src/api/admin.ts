@@ -1,10 +1,13 @@
 import { http } from './client'
 import type {
+  AuditEntry,
+  CorrectionRequest,
   Person,
   PersonCreate,
   PersonType,
   PersonUpdate,
   PersonWithQr,
+  SessionDetail,
   SessionSummary,
 } from './types'
 
@@ -40,5 +43,25 @@ export const listPersonTypes = () => http.get<PersonType[]>('/person-types')
 export const createPersonType = (code: string, displayName: string) =>
   http.post<PersonType>('/person-types', { code, display_name: displayName })
 
-export const listOpenSessions = () =>
-  http.get<SessionSummary[]>(`/attendance/sessions${qs({ status: 'OPEN', limit: 500 })}`)
+export interface SessionQuery {
+  personId?: string
+  type?: string
+  dateFrom?: string
+  dateTo?: string
+  status?: 'OPEN' | 'CLOSED' | 'VOIDED'
+  needsReview?: boolean
+  limit: number
+  offset: number
+}
+
+export const listSessions = (q: SessionQuery) =>
+  http.get<SessionSummary[]>(`/attendance/sessions${qs({
+    person_id: q.personId, type: q.type, date_from: q.dateFrom, date_to: q.dateTo, status: q.status,
+    needs_review: q.needsReview || undefined, limit: q.limit, offset: q.offset,
+  })}`)
+export const getSession = (id: string) => http.get<SessionDetail>(`/attendance/sessions/${id}`)
+export const correctSession = (id: string, body: CorrectionRequest) =>
+  http.post<SessionDetail>(`/attendance/sessions/${id}/correct`, body)
+
+export const listAuditLogs = (q: { entityType: string; entityId: string }) =>
+  http.get<AuditEntry[]>(`/audit-logs${qs({ entity_type: q.entityType, entity_id: q.entityId, limit: 100 })}`)

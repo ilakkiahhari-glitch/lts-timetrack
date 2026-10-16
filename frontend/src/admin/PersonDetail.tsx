@@ -54,7 +54,10 @@ export default function PersonDetail() {
     <>
       <div className="page-head">
         <h1 className="page-title">{fullName(person)}</h1>
-        <Link to="/admin/people" className="btn">Back to the list</Link>
+        <div className="actions">
+          <Link to={`/admin/sessions?person=${person.id}`} className="btn">View attendance</Link>
+          <Link to="/admin/people" className="btn">Back to the list</Link>
+        </div>
       </div>
 
       <PersonEditor key={person.id} person={person} onUpdated={setPerson} />

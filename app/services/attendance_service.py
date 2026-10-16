@@ -110,13 +110,18 @@ async def process_scan(
 
 
 async def on_site(db: AsyncSession) -> list[dict]:
+    """Who is on site now. A stale open session (past its cutoff; the person forgot to scan out) is not on site:
+    it is for an admin to review instead (see GET /attendance/sessions?needs_review=true)."""
     rows = await db.execute(
-        select(Person, AttendanceSession.entry_time)
+        select(Person, AttendanceSession.entry_time, AttendanceSession.work_date, AttendanceRule.auto_close_time)
         .join(AttendanceSession, AttendanceSession.person_id == Person.id)
+        .outerjoin(AttendanceRule, AttendanceRule.person_type == Person.person_type)
         .where(AttendanceSession.status == "OPEN")
         .order_by(AttendanceSession.entry_time)
     )
+    now = datetime.now(timezone.utc)
     return [
         {"person": display_name(p), "person_type": p.person_type, "entry_time": entry}
-        for p, entry in rows.all()
+        for p, entry, work_date, auto_close in rows.all()
+        if not is_stale(entry, work_date, auto_close, now)
     ]

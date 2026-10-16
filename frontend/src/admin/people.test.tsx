@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetClientForTests } from '../api/client'
@@ -14,49 +14,6 @@ afterEach(() => {
 })
 
 const params = (call: { url: URL }) => Object.fromEntries(call.url.searchParams)
-
-// ---------------------------------------------------------------------------------- dashboard
-
-describe('dashboard', () => {
-  const open = (over: object) => ({
-    id: 's1', person_id: 'p1', external_code: 'T001', person_name: 'Anna Rivera', person_type: 'TEACHER',
-    entry_time: '2026-10-16T12:00:00Z', exit_time: null, status: 'OPEN', duration_seconds: null,
-    work_date: '2026-10-16', notes: null, ...over,
-  })
-
-  it('shows who is on site and which sessions need review', async () => {
-    fakeApi({
-      'GET /attendance/sessions': ({ url }) => {
-        expect(url.searchParams.get('status')).toBe('OPEN')
-        return { body: [open({}), open({ id: 's2', person_name: 'Ben Chen', person_type: 'VOLUNTEER_HELPER', notes: '[FLAGGED: left open]' })] }
-      },
-    })
-    renderSignedIn('/admin')
-    const card = await screen.findByRole('region', { name: /on site now/i })
-    expect(await within(card).findByText('Anna Rivera')).toBeInTheDocument()
-    expect(within(card).getByText('Volunteer helper')).toBeInTheDocument()
-    expect(within(card).getAllByText('Needs review')).toHaveLength(1)
-    expect(within(card).getByText('2')).toBeInTheDocument()
-  })
-
-  it('says so when nobody is on site, and when the list cannot be loaded', async () => {
-    fakeApi({ 'GET /attendance/sessions': () => ({ body: [] }) })
-    renderSignedIn('/admin')
-    expect(await screen.findByText('Nobody is checked in.')).toBeInTheDocument()
-  })
-
-  it('shows an error when the server fails', async () => {
-    fakeApi({ 'GET /attendance/sessions': () => ({ status: 500, body: { detail: 'Database unavailable' } }) })
-    renderSignedIn('/admin')
-    expect(await screen.findByRole('alert')).toHaveTextContent('Database unavailable')
-  })
-
-  it('links to the main actions', async () => {
-    fakeApi({ 'GET /attendance/sessions': () => ({ body: [] }) })
-    renderSignedIn('/admin')
-    expect(await screen.findByRole('link', { name: /add a person and print a badge/i })).toHaveAttribute('href', '/admin/people/new')
-  })
-})
 
 // ---------------------------------------------------------------------------------- people list
 

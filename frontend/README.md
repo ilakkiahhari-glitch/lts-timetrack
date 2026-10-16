@@ -1,8 +1,8 @@
 # LTS TimeTrack front end
 
 React 19 + Vite + TypeScript. It contains the **kiosk scan screen** for volunteer scanner operators and the first
-**admin screens** (sign-in routing, dashboard, people and printable badges). Sessions and corrections, devices, users,
-rules, the audit log and reports are still to come. It talks to the FastAPI backend under `/api/v1` and nothing else.
+**admin screens** (sign-in routing, dashboard with a review queue, people and printable badges, sessions and
+corrections). Devices, users, attendance rules, the audit log viewer and reports are still to come. It talks to the FastAPI backend under `/api/v1` and nothing else.
 
 ## Run it
 
@@ -27,11 +27,19 @@ for access.
 |---|---|
 | `/login` | Sign in |
 | `/kiosk` | Kiosk (device setup the first time) |
-| `/admin` | Dashboard: who is on site now, sessions flagged for review, quick actions |
+| `/admin` | Dashboard: a "Needs review" queue (forgotten scan-outs), who is on site now, quick actions |
+| `/admin/sessions` | Attendance sessions: filter by dates (last 7 days by default), type and status. `?review=1` is the review queue, `?person=<id>` one person's sessions |
+| `/admin/sessions/:id` | One session: summary, scan events, change history, and the correction form (mandatory reason) |
 | `/admin/people` | Search and filter people (type, group, active), 25 per page |
 | `/admin/people/new` | Add a person, then print or download their one-time QR badge |
 | `/admin/people/:id` | Edit details, deactivate or reactivate, issue a new QR code, reprint a badge issued moments ago |
 | `/admin/people/types` | List and add person types |
+
+**Fixing a forgotten scan-out.** A session that was never closed ("Left open") or was voided because the person scanned in
+again the next day ("Missed exit") appears in the review queue and is not counted as on site. Open it and enter the real
+entry and exit times plus a reason. The correction voids the old session and creates a corrected one; the original scans,
+the reason and who did it stay in the history. A missed-exit session can be rebuilt once. Times in the form use the
+browser's time zone, which is shown above the form.
 
 **Badges.** The badge card (name, type, ID number and QR, 86 x 54 mm) is what prints; the rest of the page is hidden in
 print. The QR holds only a random token, so the printed text is what makes a badge recognisable. The code is shown once
@@ -60,12 +68,12 @@ Behaviour worth knowing:
 ## Layout
 
 - `src/api/`: typed API client (`client.ts`) with token refresh, error mapping and the `X-Device-Key` header;
-  `admin.ts` has the admin calls (people, person types, open sessions).
+  `admin.ts` has the admin calls (people, person types, sessions and corrections, audit history).
 - `src/auth/`: session state (`session.tsx`, `context.ts`), the role hint (`jwt.ts`) and what is kept in
   `localStorage` (`storage.ts`): the refresh token, role and device key. The access token lives in memory only.
 - `src/routes.tsx`: route guards (`RequireAuth`, `RequireAdmin`) and the role-based home redirect.
 - `src/kiosk/useScanFlow.ts`: submits codes, ignores repeats, decides what the banner shows.
-- `src/pages/`: `Login`, `DeviceSetup`, `Kiosk`. `src/admin/`: layout, dashboard and the people screens.
+- `src/pages/`: `Login`, `DeviceSetup`, `Kiosk`. `src/admin/`: layout, dashboard, the people screens and the sessions screens. `src/dates.ts`: date helpers.
 - `src/components/`: camera scanner, result banner, on-site list, clock, badge (`Badge.tsx`), key/value editor.
 - `src/test/fakeApi.tsx`: test helper that stubs `fetch` by method and path and renders the app signed in.
 

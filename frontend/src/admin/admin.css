@@ -54,7 +54,8 @@ a.btn-primary { color: var(--brand-contrast); }
 /* ---- forms ---- */
 
 .form { display: flex; flex-direction: column; gap: 16px; }
-.form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.form .form-head { margin-bottom: 0; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 20px; }
 .field { display: flex; flex-direction: column; }
 .field label { margin-top: 10px; }
@@ -73,8 +74,9 @@ select {
 .form-ok { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--entry); color: var(--entry); font-size: 16px; }
 .notice { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--duplicate); color: var(--text); background: color-mix(in srgb, var(--duplicate) 12%, transparent); font-size: 16px; }
 
-.facts { display: flex; flex-wrap: wrap; gap: 8px 32px; margin: 0; }
-.facts div { display: flex; flex-direction: column; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 24px; margin: 0; }
+.facts div { display: flex; flex-direction: column; min-width: 0; }
+.facts dd { overflow-wrap: anywhere; }
 .facts dt { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .facts dd { margin: 0; font-weight: 600; }
 
@@ -83,6 +85,23 @@ select {
 .kv-empty { margin-bottom: 10px; font-size: 15px; }
 .kv-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
 .kv-error { grid-column: 1 / -1; margin: 0; }
+
+textarea {
+  font: inherit;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.reason { flex-basis: 100%; font-size: 16px; padding-left: 2px; }
+.filter-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.review-card { border-color: var(--duplicate); }
+.admin .count-warn { background: var(--duplicate); color: #fff; }
+.card-title { padding: 18px 16px 4px; }
 
 /* ---- tables and filters ---- */
 

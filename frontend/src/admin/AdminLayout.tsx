@@ -11,6 +11,7 @@ export default function AdminLayout() {
         <nav aria-label="Main">
           <NavLink to="/admin" end>Dashboard</NavLink>
           <NavLink to="/admin/people">People</NavLink>
+          <NavLink to="/admin/sessions">Sessions</NavLink>
         </nav>
         <div className="admin-user">
           <span className="admin-email" title={email ?? ''}>{email}</span>

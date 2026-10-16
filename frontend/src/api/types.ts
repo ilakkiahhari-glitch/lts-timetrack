@@ -64,6 +64,9 @@ export interface PersonType {
   is_active: boolean
 }
 
+/** Why an admin must look at a session: still open past its cutoff, or voided because of a missed exit. */
+export type ReviewReason = 'LEFT_OPEN' | 'MISSED_EXIT'
+
 export interface SessionSummary {
   id: string
   person_id: string
@@ -76,4 +79,32 @@ export interface SessionSummary {
   duration_seconds: number | null
   work_date: string
   notes: string | null
+  review: ReviewReason | null
+}
+
+export interface SessionEvent {
+  id: number
+  event_type: 'ENTRY' | 'EXIT'
+  event_time: string
+  source: 'KIOSK' | 'ADMIN_CORRECTION' | 'SYSTEM'
+}
+
+export interface SessionDetail extends SessionSummary {
+  events: SessionEvent[]
+}
+
+export interface CorrectionRequest {
+  entry_time: string // ISO-8601 with an offset
+  exit_time: string
+  reason: string
+}
+
+export interface AuditEntry {
+  id: number
+  actor_id: string | null
+  action: string
+  entity_type: string
+  entity_id: string
+  reason: string | null
+  created_at: string
 }

@@ -73,7 +73,21 @@ export const person = (over: Record<string, unknown> = {}) => ({
   qr_issued_at: '2026-10-16T12:00:00Z', is_active: true, created_at: '2026-10-01T12:00:00Z', ...over,
 })
 
-export const PNG = 'data:image/png;base64,iVBORw0KGgo='
+export const session = (over: Record<string, unknown> = {}) => ({
+  id: 's1', person_id: 'p1', external_code: 'T001', person_name: 'Anna Rivera', person_type: 'TEACHER',
+  entry_time: '2026-03-02T13:00:00Z', exit_time: '2026-03-02T21:00:00Z', status: 'CLOSED', duration_seconds: 28800,
+  work_date: '2026-03-02', notes: null, review: null, entry_device_id: null, exit_device_id: null, ...over,
+})
+
+export const sessionDetail = (over: Record<string, unknown> = {}) => ({
+  ...session(over),
+  events: [
+    { id: 1, event_type: 'ENTRY', event_time: '2026-03-02T13:00:00Z', source: 'KIOSK', device_id: null, operator_id: null },
+    { id: 2, event_type: 'EXIT', event_time: '2026-03-02T21:00:00Z', source: 'KIOSK', device_id: null, operator_id: null },
+  ],
+})
+
+export const PNG ='data:image/png;base64,iVBORw0KGgo='
 
 export const types = [
   { code: 'STAFF', display_name: 'Staff', is_active: true },

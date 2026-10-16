@@ -48,7 +48,7 @@ Request path: Volunteers and admins use the LTS TimeTrack web app, which calls t
 
 The state engine runs these checks in order. A duplicate within the person type's window (30 seconds by default) of that person's last event is ignored; otherwise an open session means this scan is the exit, and no open session means it is the entry. Every path ends by returning a result to the kiosk.
 
-> **[DECIDED OI-1] Stale open sessions.** An open session is *stale* once it is past its person type's `auto_close_time` on its work date, or, if the type has no `auto_close_time`, once its work date has ended (local midnight). A scan by a person whose open session is stale is **not** treated as the EXIT: the stale session is set to VOIDED with a `[MISSED EXIT]` note and an audit row (the scan's operator is the actor), and the scan starts a new session (ENTRY, with the message "Previous exit was missed"). An admin can rebuild the voided session once with a correction (the old session is then marked `[CORRECTED]`). The duplicate check runs first, so a duplicate scan never voids anything.
+> **[DECIDED OI-1] Stale open sessions.** An open session is *stale* once it is past its person type's `auto_close_time` on its work date, or, if the type has no `auto_close_time`, once its work date has ended (local midnight). A scan by a person whose open session is stale is **not** treated as the EXIT: the stale session is set to VOIDED with a `[MISSED EXIT]` note and an audit row (the scan's operator is the actor), and the scan starts a new session (ENTRY, with the message "Previous exit was missed"). An admin can rebuild the voided session once with a correction (the old session is then marked `[CORRECTED]`). **Review queue:** a stale open session is not counted as on site; it and every voided missed exit that has not yet been rebuilt are the sessions that need review (`review` = `LEFT_OPEN` or `MISSED_EXIT` on `GET /attendance/sessions`, filterable with `needs_review`) until an admin corrects them. The duplicate check runs first, so a duplicate scan never voids anything.
 
 | Check | Source | Outcome |
 | --- | --- | --- |
@@ -454,7 +454,7 @@ Base path `/api/v1`. JSON everywhere; timestamps are ISO-8601 UTC. Errors use `{
 | POST | /auth/login | Public | Email + password; returns access and refresh JWT |
 | POST | /auth/refresh | Public | Exchange refresh token |
 | POST | /kiosk/scan | Volunteer + device key | Process a QR scan; returns ENTRY, EXIT, DUPLICATE; invalid QR returns 422 |
-| GET | /kiosk/status | Volunteer + device key | People currently on site |
+| GET | /kiosk/status | Volunteer + device key | People currently on site (a stale open session is not on site; see OI-1) |
 | GET | /people | Admin | List, search; filter by `type`, `group`, active |
 | POST | /people | Admin | Create a person of a given type and issue QR token (shown once) |
 | GET / PATCH | /people/{id} | Admin | View or update |
@@ -462,7 +462,7 @@ Base path `/api/v1`. JSON everywhere; timestamps are ISO-8601 UTC. Errors use `{
 | GET | /people/{id}/qr | Admin | Printable QR image (PNG) for a freshly issued token (available for a short time after issue; see G-3) |
 | GET / POST | /person-types | Admin | List and add person types |
 | GET / PUT | /attendance-rules/{person_type} | Admin | View or change duplicate window, auto-close time and late-after time |
-| GET | /attendance/sessions | Admin | Filter by person, type, date range, status |
+| GET | /attendance/sessions | Admin | Filter by person, type, date range, status, and `needs_review` (the review queue). Each row has a `review` field: `LEFT_OPEN` or `MISSED_EXIT` when an admin must look at it |
 | GET | /attendance/sessions/{id} | Admin | Session with its events |
 | POST | /attendance/sessions/{id}/correct | Admin | Void and replace; body requires `reason` |
 | GET | /reports/summary | Admin | Hours per person over a date range; filter by type |
@@ -563,7 +563,7 @@ Reports aggregate attendance_sessions by person (filterable by type) and work_da
 
 | ID | Gap | Status |
 | --- | --- | --- |
-| G-1 | Web app (kiosk screen, admin dashboard) | **Kiosk screen built** (2026-10-16: React + Vite + TypeScript in `frontend/`, camera and USB/manual scanning, on-site list). **Admin screens in progress** (2026-10-16): role-based sign-in, dashboard, people management with printable QR badges and person types are built. Still to build: sessions and corrections, attendance rules, devices, users, audit log viewer, reports and export |
+| G-1 | Web app (kiosk screen, admin dashboard) | **Kiosk screen built** (2026-10-16: React + Vite + TypeScript in `frontend/`, camera and USB/manual scanning, on-site list). **Admin screens in progress** (2026-10-16): role-based sign-in, dashboard with a review queue, people management with printable QR badges, person types, and sessions with corrections are built. Still to build: attendance rules, devices, users, audit log viewer, reports and export |
 | G-2 | Nginx with TLS config | Not included |
 | G-3 | `GET /people/{id}/qr` works only for a short time after a QR is issued (raw tokens are never stored in the database) | **Done** (2026-10-16): the token is cached in Redis with an expiry, so any worker can serve it; falls back to per-process memory without Redis |
 | G-4 | Rate limits (30 req/min) must be shared across the 2-4 uvicorn workers | **Done** (2026-10-16): Redis counters, one fixed one-minute window per device or IP; falls back to per-process counting without Redis or if Redis is down |

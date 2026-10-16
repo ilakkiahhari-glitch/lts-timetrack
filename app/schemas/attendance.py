@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -29,6 +30,9 @@ class SessionOut(BaseModel):
     notes: str | None
     entry_device_id: uuid.UUID | None
     exit_device_id: uuid.UUID | None
+    # Why an admin needs to look at it: LEFT_OPEN (still open past its cutoff) or MISSED_EXIT (voided because a
+    # new entry was scanned, not yet rebuilt). None = nothing to do.
+    review: Literal["LEFT_OPEN", "MISSED_EXIT"] | None = None
 
 
 class SessionDetail(SessionOut):

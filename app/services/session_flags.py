@@ -33,3 +33,18 @@ def stale_cutoff(entry_time: datetime, work_date: date, auto_close: time | None)
 
 def is_stale(entry_time: datetime, work_date: date, auto_close: time | None, now: datetime) -> bool:
     return now >= stale_cutoff(entry_time, work_date, auto_close)
+
+
+LEFT_OPEN = "LEFT_OPEN"      # still OPEN past its cutoff: the person forgot to scan out
+MISSED_EXIT = "MISSED_EXIT"  # voided because a new entry was scanned; waiting for an admin to rebuild it
+
+
+def review_state(
+    status: str, notes: str | None, entry_time: datetime, work_date: date, auto_close: time | None, now: datetime
+) -> str | None:
+    """Why a session needs an admin's attention (None = it does not)."""
+    if status == "OPEN" and is_stale(entry_time, work_date, auto_close, now):
+        return LEFT_OPEN
+    if status == "VOIDED" and (notes or "").startswith(MISSED_EXIT_PREFIX) and CORRECTED_MARK not in (notes or ""):
+        return MISSED_EXIT
+    return None
