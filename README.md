@@ -46,18 +46,36 @@ reachable they are skipped and only the unit tests run.
 
 ```powershell
 python -m scripts.flag_open_sessions   # flags sessions left open past auto_close_time; never auto-closes
+.\scripts\schedule_nightly_job.ps1     # registers a daily Windows Scheduled Task (default 00:05)
 ```
 
-Schedule it nightly (Task Scheduler / cron). Flagged sessions show a `[FLAGGED ...]` note; an admin resolves each
-with a correction.
+Flagged sessions show a `[FLAGGED ...]` note and stay OPEN; an admin resolves each with a correction. On Linux, call
+the first command from cron or a scheduled container instead.
+
+## Attendance rules (per person type)
+
+`PUT /attendance-rules/{type}` sets `duplicate_window_seconds`, `auto_close_time` and `late_after_time`:
+
+- `auto_close_time`: when an open session becomes stale. A scan after that voids it as a missed exit and starts a new
+  entry; the nightly job flags it. Without one, a session is stale once its work date ends.
+- `late_after_time`: the "Late entries" report column counts days whose first entry is after it. Unset = not tracked.
+
+## Redis (optional, for several uvicorn workers)
+
+```powershell
+docker compose up -d redis                       # then set REDIS_URL=redis://localhost:6379/0 in .env
+```
+
+With `REDIS_URL` set, rate limits and the fresh-QR-image cache are shared by all workers. Without it (or if Redis is
+down) each worker uses its own memory, which is fine for one worker.
 
 ## Layout
 
-- `app/config.py`, `app/db.py`, `app/security.py`, `app/ratelimit.py`, `app/main.py`: settings, async DB session, JWT/argon2/RBAC/device-key auth, rate limits, app + health.
+- `app/config.py`, `app/db.py`, `app/security.py`, `app/ratelimit.py`, `app/redis_client.py`, `app/main.py`: settings, async DB session, JWT/argon2/RBAC/device-key auth, rate limits, optional Redis, app + health.
 - `app/models.py`: ORM models. The schema itself is owned by `db/schema.sql` via the Alembic migration `alembic/versions/0001_initial_schema.py`.
 - `app/routers/`: `auth`, `users`, `people`, `person_types` (also attendance rules), `devices`, `kiosk`, `attendance`, `reports`, `audit`.
 - `app/schemas/`: Pydantic request/response models.
-- `app/services/`: `state_engine` (pure ENTRY/EXIT/DUPLICATE logic), `qr_service`, `attendance_service` (scan transaction), `audit_service` (audit rows + corrections), `report_service`, `maintenance_service` (nightly job).
+- `app/services/`: `state_engine` (pure ENTRY/EXIT/DUPLICATE logic), `qr_service`, `attendance_service` (scan transaction), `audit_service` (audit rows + corrections), `report_service`, `maintenance_service` (nightly job), `session_flags` (stale-session cutoffs and note markers).
 - `scripts/`: `seed.py` (first admin), `flag_open_sessions.py` (nightly job).
 - `Dockerfile`, `pyproject.toml`: container image (uvicorn, 2 workers) and project metadata.
 
@@ -65,7 +83,8 @@ Schema changes: add a new Alembic revision (`alembic revision -m "..."`) instead
 
 ## Known gaps against the design document
 
-- Reports have no "late entries" column: the design leaves the lateness threshold as an open question.
+- Overtime is not in the reports (still an open question in the design document, OI-2).
 - Nginx / TLS config is not included (deployment step).
-- Rate limits and the short-lived QR image cache are per process; with several uvicorn workers each counts separately.
+- Redis support is tested with an in-memory fake only; run it against a real Redis before relying on it.
+- The API Dockerfile is untested, and there is no load test against the p95 < 300 ms target yet.
 - The web front end (kiosk screen, admin dashboard) is not built.

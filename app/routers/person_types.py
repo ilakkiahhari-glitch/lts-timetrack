@@ -55,15 +55,19 @@ async def update_rule(
     rule = await db.get(AttendanceRule, person_type.upper())
     if rule is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No rules for that person type")
-    before = {"duplicate_window_seconds": rule.duplicate_window_seconds,
-              "auto_close_time": str(rule.auto_close_time) if rule.auto_close_time else None}
+    def snapshot(window, auto_close, late_after) -> dict:
+        return {"duplicate_window_seconds": window,
+                "auto_close_time": str(auto_close) if auto_close else None,
+                "late_after_time": str(late_after) if late_after else None}
+
+    before = snapshot(rule.duplicate_window_seconds, rule.auto_close_time, rule.late_after_time)
     rule.duplicate_window_seconds = body.duplicate_window_seconds
     rule.auto_close_time = body.auto_close_time
+    rule.late_after_time = body.late_after_time
     rule.updated_at = func.now()
     add_audit(db, actor_id=admin.id, action="UPDATE", entity_type="attendance_rule", entity_id=rule.person_type,
               old_values=before,
-              new_values={"duplicate_window_seconds": body.duplicate_window_seconds,
-                          "auto_close_time": str(body.auto_close_time) if body.auto_close_time else None},
+              new_values=snapshot(body.duplicate_window_seconds, body.auto_close_time, body.late_after_time),
               request=request)
     await db.commit()
     await db.refresh(rule)

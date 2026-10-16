@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models import AttendanceEvent, AttendanceSession, AuditLog, User
+from app.services.session_flags import CORRECTED_MARK, MISSED_EXIT_PREFIX
 
 
 class SessionNotFound(Exception):
@@ -49,11 +50,18 @@ async def correct_session(
     old = await db.get(AttendanceSession, session_id, with_for_update=True)
     if old is None:
         raise SessionNotFound
-    if old.status == "VOIDED":
+    notes = old.notes or ""
+    # A session voided by a missed exit (OI-1) may be rebuilt once; any other voided session cannot be corrected.
+    rebuilding_missed_exit = (
+        old.status == "VOIDED" and notes.startswith(MISSED_EXIT_PREFIX) and CORRECTED_MARK not in notes
+    )
+    if old.status == "VOIDED" and not rebuilding_missed_exit:
         raise SessionAlreadyVoided
 
     before = serialize_session(old)
     old.status = "VOIDED"
+    if rebuilding_missed_exit:
+        old.notes = f"{notes} {CORRECTED_MARK}"
     await db.flush()
 
     replacement = AttendanceSession(

@@ -111,6 +111,19 @@ def make_person(client, admin):
 
 
 @pytest.fixture
+def fake_redis():
+    """An in-memory Redis standing in for the shared store (installed for one test, then removed)."""
+    from fakeredis import FakeAsyncRedis
+
+    from app import redis_client
+
+    redis = FakeAsyncRedis(decode_responses=True)
+    redis_client.set_client_for_tests(redis)
+    yield redis
+    redis_client.set_client_for_tests(None)
+
+
+@pytest.fixture
 def instant_type(client, admin):
     """A person type with a 0-second duplicate window, so ENTRY and EXIT can follow each other immediately."""
     code = uid("T").upper()

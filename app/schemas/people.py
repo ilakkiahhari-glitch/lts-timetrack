@@ -63,6 +63,7 @@ class PersonTypeOut(BaseModel):
 class RuleUpdate(BaseModel):
     duplicate_window_seconds: int = Field(ge=0)
     auto_close_time: time | None = None
+    late_after_time: time | None = None  # local time; first ENTRY of a day after this is "late". None = not tracked
 
 
 class RuleOut(BaseModel):
@@ -71,4 +72,5 @@ class RuleOut(BaseModel):
     person_type: str
     duplicate_window_seconds: int
     auto_close_time: time | None
+    late_after_time: time | None
     updated_at: datetime

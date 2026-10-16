@@ -1,28 +1,16 @@
 """Nightly job: flag sessions left open past their person type's auto_close_time for admin review.
 
-Sessions stay OPEN (never auto-closed silently). The flag is a marker in `notes`, plus an audit row.
+Sessions stay OPEN (never auto-closed silently; design OI-3). The flag is a marker in `notes`, plus an audit row.
 An admin resolves each one with a correction (POST /attendance/sessions/{id}/correct).
 """
 
-from datetime import datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.models import AttendanceRule, AttendanceSession, AuditLog, Person
-
-FLAG_PREFIX = "[FLAGGED: left open past auto-close time]"
-
-
-def cutoff_for(entry_time: datetime, work_date, auto_close: time) -> datetime:
-    """Cutoff on the work date (school-local). If that is not after the entry, use the next day."""
-    tz = ZoneInfo(settings.school_tz)
-    cutoff = datetime.combine(work_date, auto_close, tzinfo=tz)
-    if cutoff <= entry_time:
-        cutoff += timedelta(days=1)
-    return cutoff
+from app.services.session_flags import FLAG_PREFIX, cutoff_for  # noqa: F401  (re-exported for callers and tests)
 
 
 async def flag_stale_open_sessions(db: AsyncSession, now: datetime | None = None) -> int:

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     allowed_origins: list[str] = ["http://localhost:3000"]
     rate_limit_per_minute: int = 30  # /kiosk/scan (per device or IP) and /auth/login (per IP)
     qr_image_ttl_seconds: int = 600  # how long a freshly issued QR image stays downloadable
+    redis_url: str | None = None  # e.g. redis://localhost:6379/0; shared rate limits + QR cache across workers
 
     # Used only by scripts/seed.py
     admin_email: str = "admin@example.com"

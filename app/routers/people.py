@@ -25,8 +25,8 @@ def _snapshot(p: Person) -> dict:
     }
 
 
-def _with_qr(person: Person, token: str) -> PersonWithQr:
-    qr_service.remember_fresh_token(person.id, token)
+async def _with_qr(person: Person, token: str) -> PersonWithQr:
+    await qr_service.remember_fresh_token(person.id, token)
     return PersonWithQr(
         **PersonOut.model_validate(person).model_dump(),
         qr_token=token,
@@ -97,7 +97,7 @@ async def create_person(
               new_values=_snapshot(person), request=request)
     await db.commit()
     await db.refresh(person)
-    return _with_qr(person, token)
+    return await _with_qr(person, token)
 
 
 @router.get("/{person_id}", response_model=PersonOut)
@@ -110,7 +110,7 @@ async def get_qr_image(person_id: uuid.UUID, db: AsyncSession = Depends(get_db),
     """Printable QR image (PNG) for a freshly issued token. Raw tokens are not stored, so this only works
     for a short time after the person is created or the QR is rotated."""
     await _get_or_404(db, person_id)
-    token = qr_service.recall_fresh_token(person_id)
+    token = await qr_service.recall_fresh_token(person_id)
     if token is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -156,4 +156,4 @@ async def rotate_qr(
               new_values={"qr_version": person.qr_version}, request=request)
     await db.commit()
     await db.refresh(person)
-    return _with_qr(person, token)
+    return await _with_qr(person, token)

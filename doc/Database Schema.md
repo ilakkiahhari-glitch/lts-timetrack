@@ -37,7 +37,7 @@ audit_logs  (actor_id -> users; entity_type + entity_id point at any row, no FK)
 | 6 | `attendance_sessions` | One entry-to-exit pair per row | Updated by scans and corrections |
 | 7 | `attendance_events` | Immutable log of every ENTRY/EXIT | **Append-only** |
 | 8 | `audit_logs` | Who changed what, with before/after values | **Append-only** |
-| - | `alembic_version` | Tracks the applied migration (`0001`) | Managed by Alembic |
+| - | `alembic_version` | Tracks the applied migration (`0002`) | Managed by Alembic |
 
 ## Enum types
 
@@ -87,7 +87,8 @@ Rules are configuration, not code. One row per person type.
 |---|---|---|---|---|
 | `person_type` | text | no | | Primary key, FK -> `person_types.code` |
 | `duplicate_window_seconds` | integer | no | `30` | Check: `>= 0`. A scan inside this window of the last event is a DUPLICATE |
-| `auto_close_time` | time | yes | | Local time; NULL = never flag open sessions (used by the future nightly job) |
+| `auto_close_time` | time | yes | | Local time; NULL = no cutoff. Used by the nightly flag job and to decide when an open session is stale (a scan after that voids it as a missed exit) |
+| `late_after_time` | time | yes | | Local time; the first ENTRY of a day after this counts as late in reports. NULL = lateness not tracked. Added in migration `0002` |
 | `updated_at` | timestamptz | no | `now()` | Set by the API (no trigger) |
 
 ## 4. `people`
@@ -145,7 +146,7 @@ One entry-to-exit pair.
 | `exit_device_id` | uuid | yes | | FK -> `devices.id` |
 | `duration_seconds` | integer | yes | generated | `exit_time - entry_time` in seconds; NULL while open |
 | `work_date` | date | no | | School-local date of entry, set by the app from `SCHOOL_TZ` |
-| `notes` | text | yes | | |
+| `notes` | text | yes | | Review markers set by the system: `[FLAGGED: left open past auto-close time]` (nightly job, session stays OPEN), `[MISSED EXIT]` (voided because a new entry was scanned after it went stale) and `[CORRECTED]` (a missed-exit session an admin has rebuilt) |
 | `created_at` | timestamptz | no | `now()` | |
 | `updated_at` | timestamptz | no | `now()` | Trigger `trg_sessions_updated` |
 

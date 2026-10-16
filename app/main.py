@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -5,9 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db import get_db
+from app.redis_client import close_redis
 from app.routers import attendance, audit, auth, devices, kiosk, people, person_types, reports, users
 
-app = FastAPI(title="LTS TimeTrack", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    await close_redis()
+
+
+app = FastAPI(title="LTS TimeTrack", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

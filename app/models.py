@@ -70,6 +70,7 @@ class AttendanceRule(Base):
     person_type: Mapped[str] = mapped_column(ForeignKey("person_types.code"), primary_key=True)
     duplicate_window_seconds: Mapped[int] = mapped_column(Integer, server_default="30")
     auto_close_time: Mapped[time | None] = mapped_column(Time)
+    late_after_time: Mapped[time | None] = mapped_column(Time)
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
 

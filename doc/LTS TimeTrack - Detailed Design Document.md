@@ -48,13 +48,13 @@ Request path: Volunteers and admins use the LTS TimeTrack web app, which calls t
 
 The state engine runs these checks in order. A duplicate within the person type's window (30 seconds by default) of that person's last event is ignored; otherwise an open session means this scan is the exit, and no open session means it is the entry. Every path ends by returning a result to the kiosk.
 
-> **[OPEN OI-1]** A stale open session (someone forgot to scan out) is not handled by this flow: the next scan, even days later, becomes the EXIT. See Open questions.
+> **[DECIDED OI-1] Stale open sessions.** An open session is *stale* once it is past its person type's `auto_close_time` on its work date, or, if the type has no `auto_close_time`, once its work date has ended (local midnight). A scan by a person whose open session is stale is **not** treated as the EXIT: the stale session is set to VOIDED with a `[MISSED EXIT]` note and an audit row (the scan's operator is the actor), and the scan starts a new session (ENTRY, with the message "Previous exit was missed"). An admin can rebuild the voided session once with a correction (the old session is then marked `[CORRECTED]`). The duplicate check runs first, so a duplicate scan never voids anything.
 
 | Check | Source | Outcome |
 | --- | --- | --- |
 | QR valid | people.qr_token_hash, is_active, qr_revoked_at | No: HTTP 422, nothing written |
 | Duplicate in window | latest attendance_events row for the person; window from attendance_rules (default 30 s) | Yes: HTTP 200 with DUPLICATE, nothing written |
-| Open session exists | attendance_sessions where status = OPEN | No: create session and ENTRY event. Yes: set exit time, EXIT event, close session |
+| Open session exists | attendance_sessions where status = OPEN | No: create session and ENTRY event. Yes: set exit time, EXIT event, close session. Yes but stale: void it as a missed exit, then create a new session and ENTRY event (OI-1, below) |
 
 ## 4. Python Backend Design
 
@@ -256,7 +256,7 @@ async def correct_session(db, admin, session_id, new_entry, new_exit, reason: st
         return replacement
 ```
 
-**Key libraries:** fastapi, uvicorn[standard], sqlalchemy[asyncio]>=2, asyncpg, alembic, pydantic>=2, pydantic-settings, argon2-cffi, python-jose (or PyJWT), openpyxl (XLSX export), pytest, httpx.
+**Key libraries:** fastapi, uvicorn[standard], sqlalchemy[asyncio]>=2, asyncpg, alembic, pydantic>=2, pydantic-settings, argon2-cffi, python-jose (or PyJWT), openpyxl (XLSX export), segno (QR images), redis (shared store client), pytest, httpx, fakeredis (tests).
 
 ## 5. PostgreSQL Schema
 
@@ -310,6 +310,7 @@ CREATE TABLE attendance_rules (
     person_type              TEXT PRIMARY KEY REFERENCES person_types(code),
     duplicate_window_seconds INT  NOT NULL DEFAULT 30 CHECK (duplicate_window_seconds >= 0),
     auto_close_time          TIME,                -- local time; NULL = never auto-flag open sessions
+    late_after_time          TIME,                -- local time; first ENTRY of a day after this is "late"; NULL = lateness not tracked (added in migration 0002)
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 INSERT INTO attendance_rules (person_type) SELECT code FROM person_types;
@@ -442,7 +443,7 @@ WHERE s.status = 'OPEN';
 - Corrections never edit events. An admin correction voids the faulty session (status VOIDED) and creates a replacement session with new events whose source is ADMIN_CORRECTION. Each correction writes an audit_logs row with before/after JSON and a mandatory reason.
 - The duplicate check (window from attendance_rules) reads the latest `attendance_events` row per person (index `idx_events_person_time`).
 - Type-specific fields (grade, guardian, host, department) go in people.attributes (JSONB). If a type later needs queried or constrained columns, add a profile table (for example student_profiles) keyed by person_id without touching the scan path.
-- Rules differ per type through attendance_rules (duplicate window, auto-close time). A new type is one INSERT into person_types plus one into attendance_rules.
+- Rules differ per type through attendance_rules (duplicate window, auto-close time, late-after time). A new type is one INSERT into person_types plus one into attendance_rules.
 
 ## 6. REST API Specification
 
@@ -460,7 +461,7 @@ Base path `/api/v1`. JSON everywhere; timestamps are ISO-8601 UTC. Errors use `{
 | POST | /people/{id}/qr/rotate | Admin | Revoke old QR, issue new token |
 | GET | /people/{id}/qr | Admin | Printable QR image (PNG) for a freshly issued token (available for a short time after issue; see G-3) |
 | GET / POST | /person-types | Admin | List and add person types |
-| GET / PUT | /attendance-rules/{person_type} | Admin | View or change duplicate window and auto-close time |
+| GET / PUT | /attendance-rules/{person_type} | Admin | View or change duplicate window, auto-close time and late-after time |
 | GET | /attendance/sessions | Admin | Filter by person, type, date range, status |
 | GET | /attendance/sessions/{id} | Admin | Session with its events |
 | POST | /attendance/sessions/{id}/correct | Admin | Void and replace; body requires `reason` |
@@ -508,11 +509,11 @@ Every admin write, login, export and QR rotation creates an append-only audit_lo
 
 **Reporting**
 
-Reports aggregate attendance_sessions by person (filterable by type) and work_date: total hours, days present, late entries, sessions still open. Export streams CSV or XLSX. A nightly job closes sessions left open past a configurable cutoff (for example 23:59 local) with status OPEN flagged for admin review, not auto-closed silently.
+Reports aggregate attendance_sessions by person (filterable by type) and work_date: total hours, days present, late entries, sessions still open. Export streams CSV or XLSX. A nightly job finds sessions left open past a configurable cutoff (for example 23:59 local) and flags them for admin review; they stay OPEN and are not auto-closed silently.
 
-> **[OPEN OI-2] Late entries:** the lateness threshold is not defined, so the "late entries" column is not implemented yet.
+> **[DECIDED OI-2] Late entries.** A person is late on a day when their first non-voided entry of that work date (school-local time) is after the `late_after_time` of their person type's rule. The "Late entries" column counts those days per person. It is blank for types with no `late_after_time` (lateness not tracked), which is different from 0. VOIDED sessions are ignored. *Overtime is still open (see Open questions).*
 >
-> **[OPEN OI-3] Nightly job:** the text above says both "closes sessions" and "not auto-closed silently". Currently implemented as: sessions stay OPEN and are flagged for admin review (marker in `notes` plus an audit row), never closed automatically. Needs confirmation.
+> **[DECIDED OI-3] Nightly job: flag only.** Sessions left open past `auto_close_time` stay OPEN. The job adds a `[FLAGGED: left open past auto-close time]` note and an audit row (no actor), once per session, and never closes anything. It runs as `python -m scripts.flag_open_sessions`, scheduled nightly (`scripts/schedule_nightly_job.ps1` registers a Windows Scheduled Task). An admin resolves each flagged session with a correction.
 
 **Deployment**
 
@@ -521,7 +522,8 @@ Reports aggregate attendance_sessions by person (filterable by type) and work_da
 | Web server / reverse proxy | Nginx with TLS, serves the web app static files, proxies /api to FastAPI |
 | FastAPI app | Docker container, `uvicorn` with 2-4 workers behind Nginx |
 | Database | Managed PostgreSQL 14+ with daily backups and point-in-time recovery |
-| Config | Environment variables: DATABASE_URL, JWT_SECRET, SCHOOL_TZ, ALLOWED_ORIGINS |
+| Shared store | Redis 7 (optional, localhost only): shared rate-limit counters and the short-lived fresh-QR-token cache across the uvicorn workers. Holds only expiring data; without it each worker uses its own memory |
+| Config | Environment variables: DATABASE_URL, JWT_SECRET, SCHOOL_TZ, ALLOWED_ORIGINS, REDIS_URL (optional) |
 | Migrations | Alembic, run on deploy; first revision = the DDL in section 5 |
 
 **Non-functional targets**
@@ -552,17 +554,18 @@ Reports aggregate attendance_sessions by person (filterable by type) and work_da
 
 | ID | Question | Status | Current behaviour |
 | --- | --- | --- | --- |
-| OI-1 | Should a person scanned after the cutoff with a stale open session auto-start a new session? | **OPEN** | The scan is treated as the EXIT of the stale session (very long duration); an admin fixes it with a correction. |
-| OI-2 | Required report columns (overtime, lateness thresholds)? | **OPEN** | Report has total hours, days present, closed sessions and sessions still open. No late-entry or overtime column. |
-| OI-3 | Nightly job: close stale sessions, or only flag them? (the Reporting section says both) | **OPEN** | Flags only; sessions stay OPEN. |
-| OI-4 | Is a printed QR badge or a phone-displayed QR the primary format? | **OPEN** | Both work; the QR is a PNG image. |
+| OI-1 | Should a person scanned after the cutoff with a stale open session auto-start a new session? | **DECIDED** (2026-10-16) | Yes: the stale session is voided as a missed exit and the scan starts a new ENTRY. See Scan Workflow. |
+| OI-2 | Required report columns (overtime, lateness thresholds)? | **PARTLY DECIDED** (2026-10-16) | Late entries: decided and built (per-type `late_after_time`, off until set). **Overtime: still OPEN**, no overtime column yet. |
+| OI-3 | Nightly job: close stale sessions, or only flag them? | **DECIDED** (2026-10-16) | Flag only; sessions stay OPEN for admin review. See Reporting. |
+| OI-4 | Is a printed QR badge or a phone-displayed QR the primary format? | **OPEN** | Both work; the QR is a PNG image. No backend impact. |
 
-**Known gaps (not decisions, not built yet)**
+**Known gaps (not decisions)**
 
 | ID | Gap | Status |
 | --- | --- | --- |
 | G-1 | Web app (kiosk screen, admin dashboard) | Not started; backend only so far |
 | G-2 | Nginx with TLS config | Not included |
-| G-3 | `GET /people/{id}/qr` works only for a short time after a QR is issued (raw tokens are never stored); the image is cached in memory per process | Implemented with this limit; after it expires, rotate the QR |
-| G-4 | Rate limits (30 req/min) are counted per process; with 2-4 uvicorn workers each counts separately | Implemented in memory; shared store (Redis or PostgreSQL) not done |
+| G-3 | `GET /people/{id}/qr` works only for a short time after a QR is issued (raw tokens are never stored in the database) | **Done** (2026-10-16): the token is cached in Redis with an expiry, so any worker can serve it; falls back to per-process memory without Redis |
+| G-4 | Rate limits (30 req/min) must be shared across the 2-4 uvicorn workers | **Done** (2026-10-16): Redis counters, one fixed one-minute window per device or IP; falls back to per-process counting without Redis or if Redis is down |
 | G-5 | Load test against the p95 < 300 ms target; monitoring | Not done |
+| G-6 | Redis and the API are not yet run together in a tested container setup (`docker-compose.yml` has `db` and `redis`; the API `Dockerfile` is untested) | Open |

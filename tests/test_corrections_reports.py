@@ -113,7 +113,8 @@ def test_reports_summary_and_exports(client, admin, kiosk, make_person, instant_
     csv_resp = client.get(f"{API}/reports/export", params={**march, "format": "csv"}, headers=admin)
     assert csv_resp.status_code == 200 and "attachment" in csv_resp.headers["content-disposition"]
     lines = csv_resp.content.decode("utf-8-sig").splitlines()
-    assert lines[0] == "Code,Name,Type,Group,Total hours,Days present,Closed sessions,Sessions still open"
+    assert lines[0] == ("Code,Name,Type,Group,Total hours,Days present,Late entries,"
+                        "Closed sessions,Sessions still open")
     assert lines[1].split(",")[1].startswith("'=cmd|calc")  # formula injection neutralised
 
     xlsx_resp = client.get(f"{API}/reports/export", params={**march, "format": "xlsx"}, headers=admin)
