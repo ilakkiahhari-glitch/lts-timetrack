@@ -30,10 +30,21 @@ In VS Code: Ctrl+Shift+P > "Python: Select Interpreter" > `.venv`. Press F5 to d
 5. Admin: `GET /attendance/sessions`, `POST /attendance/sessions/{id}/correct`, `GET /reports/summary`,
    `GET /reports/export?format=csv|xlsx`, `GET /audit-logs`.
 
+## Front end (kiosk screen)
+
+```powershell
+cd frontend
+npm install
+npm run dev                          # http://localhost:3000, proxies /api to the backend on :8000
+```
+
+See [frontend/README.md](frontend/README.md): sign in as a volunteer, enter the kiosk's device key once, then scan.
+
 ## Checks
 
 ```powershell
-pytest                               # unit tests + integration tests
+pytest                               # unit tests + integration tests (backend)
+cd frontend; npm test                # front-end tests
 curl http://localhost:8000/api/v1/health
 curl http://localhost:8000/api/v1/health/db
 ```
@@ -87,4 +98,4 @@ Schema changes: add a new Alembic revision (`alembic revision -m "..."`) instead
 - Nginx / TLS config is not included (deployment step).
 - Redis support is tested with an in-memory fake only; run it against a real Redis before relying on it.
 - The API Dockerfile is untested, and there is no load test against the p95 < 300 ms target yet.
-- The web front end (kiosk screen, admin dashboard) is not built.
+- The admin dashboard is not built yet (the kiosk screen is, in `frontend/`).
